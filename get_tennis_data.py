@@ -1,7 +1,6 @@
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
@@ -39,6 +38,10 @@ blank_dob = int(time.mktime(blank_dob.timetuple()))
 # create a new Firefox session
 profile = webdriver.FirefoxProfile()
 profile.set_preference('permissions.default.image', 2)
+profile.set_preference("browser.cache.disk.enable", False)
+profile.set_preference("browser.cache.memory.enable", False)
+profile.set_preference("browser.cache.offline.enable", False)
+profile.set_preference("network.http.use-cache", False) 
 
 
 caps = DesiredCapabilities().FIREFOX
@@ -50,11 +53,7 @@ driver = webdriver.Firefox(firefox_options = options, firefox_profile=profile, c
 driver.implicitly_wait(40)
 driver.get(url)
 
-src = driver.page_source
-
-soup = BeautifulSoup(src, "html.parser")
-
-info_players = soup.find_all('tr', {'class': re.compile('^rank-row')})
+info_players = BeautifulSoup(driver.page_source, "html.parser").find_all('tr', {'class': re.compile('^rank-row')})
 
 print(len(info_players))
 
@@ -65,8 +64,7 @@ game_away = []
 dur = []
 
 for inf in info_players:
-    link = inf.find('a').get('href')
-    player_links.append(link)
+    player_links.append(inf.find('a').get('href'))
     
 i = 0
 m = 0
@@ -124,9 +122,9 @@ players.to_csv('players.csv', sep = ';')
 ranks.to_csv('ranks.csv', sep = ';')
 '''     
 
-for lin in player_links[0:800]:
+for lin in player_links[0:10]:
     i += 1
-    print('Current player: ', i)
+    print('Current player: ', i, ' ', lin)
     
     while True:
         try:
@@ -134,36 +132,26 @@ for lin in player_links[0:800]:
         except:
             continue
         break
-    
-   
         
     #нажимаем кномку load more для дозагрузки матчей
     
-    for i in range(0, 4):
+    WebDriverWait(driver, 10).until(EC.invisibility_of_element_located((By.ID, "preload")))
+   
+    for cnt in range(0, 4):
         driver.execute_script("loadMoreGames('_s');")
+        WebDriverWait(driver, 10).until(EC.invisibility_of_element_located((By.ID, "preload")))
         
-    wait = WebDriverWait(driver, 10)    
-    wait.until(EC.invisibility_of_element_located((By.ID, "preload")))
-        
-        
-    #wait = WebDriverWait(driver, 10)
-    #live_games_link = wait.until(EC.element_to_be_clickable((By.LINK_TEXT, "Singles")))
-    #live_games_link.click()
+    
+   
+    soup = BeautifulSoup(driver.page_source, "html.parser")
       
-    src = driver.page_source
-        
-    soup = BeautifulSoup(src, "html.parser")
-    
-    table = soup.find('div', {'id': 'fs-results_s'})
-    
-    table = table.find_all('tr', {'id': re.compile('^g_2')})
-    
-    
+    table = soup.find('div', {'id': 'fs-results_s'}).find_all('tr', {'id': re.compile('^g_2')})
+      
+    print(len(table))
     
     for tab in table:
         
-        m_l = tab.get('id')
-        m_l = m_l[4:]
+        m_l = tab.get('id')[4:]
         
         while True:
             try:
@@ -172,17 +160,17 @@ for lin in player_links[0:800]:
                 continue
             break
         
-        wait.until(EC.visibility_of_element_located((By.ID, "tab-match-summary")))
-        src = driver.page_source
+        WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.ID, "tab-match-summary")))
         
-        soup = BeautifulSoup(src, "html.parser")               
+        soup = BeautifulSoup(driver.page_source, "html.parser")   
+        
+        if soup.find('div', {'class': 'info-status mstat'}).text == 'Walkover':
+            continue
         
         m_t = soup.find('div', {'class': 'info-time mstat-date'}).text
          
         summ = soup.find('div', {'id':'summary-content'})
         sum_home = summ.find('tr', {'class': 'odd'})
-        
-        
         
         for scor in sum_home.find_all('td', {'class': re.compile('^score')}):
             if scor.get('class') == ['score']:
@@ -195,8 +183,6 @@ for lin in player_links[0:800]:
                 
         sum_away = summ.find('tr', {'class': 'even'})
         
-        
-        
         for scor in sum_away.find_all('td', {'class': re.compile('^score')}):
             if scor.get('class') == ['score']:
                 if scor.find('strong') is not None:
@@ -206,12 +192,17 @@ for lin in player_links[0:800]:
                 game_away.append(int(scor.find('span').text))
                
         
-        for tm in soup.find('tfoot', {'class':'match-time'}).find_all('td', {'class': 'score'}):
-            if len(tm.text) > 0:
-                dur.append(int(tm.text[0: 1]) * 60 + int(tm.text[2: 4]))
-                
+        if soup.find('tfoot', {'class':'match-time'}) is not None:
+            for tm in soup.find('tfoot', {'class':'match-time'}).find_all('td', {'class': 'score'}):
+                if len(tm.text) > 0:
+                    dur.append(int(tm.text[0: 1]) * 60 + int(tm.text[2: 4]))
+        
+        
         for s in range(0, len(game_home)):
-            match_stats.loc[len(match_stats)] =  [m_l, s, game_home[s], game_away[s], dur[s + 1]]
+            if len(dur) > 0:
+                match_stats.loc[len(match_stats)] =  [m_l, s, game_home[s], game_away[s], dur[s + 1]]
+            else:
+                match_stats.loc[len(match_stats)] =  [m_l, s, game_home[s], game_away[s], None]
             
         game_home = []
         game_away = []
@@ -234,10 +225,7 @@ for lin in player_links[0:800]:
         
         m += 1
         print('Total matches: ', m ,' ' , m_l)
-           
-      
-        
-        
+       
 
 match_stats.to_csv('match_stats.csv', sep = ';')
 matches.to_csv('matches.csv', sep = ';')
