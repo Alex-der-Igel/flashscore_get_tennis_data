@@ -14,6 +14,7 @@ import datetime, time, os
 
 import pandas as pd
 
+run_time = time.time()
 
 #create dataframes for tables
 players = pd.DataFrame(columns=['id_player', 'name_player', 'dob', 'sex'])
@@ -21,7 +22,7 @@ players = pd.DataFrame(columns=['id_player', 'name_player', 'dob', 'sex'])
 ranks = pd.DataFrame(columns=['id_player', 'year', 'rank'])
 match_stats = pd.DataFrame(columns=['id_match', 'set_num', 'game_home', 'game_away', 'set_duration'])
 
-matches = pd.DataFrame(columns=['id_match', 'tournament', 'tournament_link', 'date', 'id_player_home', 'id_player_away', 'odd_home', 'odd_away'])
+matches = pd.DataFrame(columns=['id_match', 'tournament', 'tournament_link', 'date', 'match_status', 'match_note',  'id_player_home', 'id_player_away', 'odd_home', 'odd_away'])
 
 url = "https://www.flashscore.com/tennis/rankings/atp/"
 
@@ -51,14 +52,10 @@ f_match_stats = 'match_stats.csv'
 
 if os.path.exists(f_matches):
     matches = pd.read_csv(f_matches, index_col=0, sep = ';')
-    print(matches)
-      
-
+    
 if os.path.exists(f_match_stats):
     match_stats = pd.read_csv(f_match_stats, index_col=0, sep = ';')
     
-
-
 driver = webdriver.Firefox(firefox_options = options, firefox_profile=profile, capabilities = caps)
 driver.implicitly_wait(40)
 driver.get(url)
@@ -168,6 +165,10 @@ for lin in player_links[0:2]:
         
     for tab in list(set(table) - set(matches['id_match'].tolist())):
         
+        if m % 20 == 0:
+            print('Average match dwnld time: {0:.2f}' . format((time.time() - run_time) / 20))
+            run_time = time.time()
+        
         m_l = tab
         
         while True:
@@ -183,7 +184,16 @@ for lin in player_links[0:2]:
         
         if soup.find('div', {'class': 'info-status mstat'}).text == 'Walkover':
             continue
+        elif soup.find('div', {'class': 'info-status mstat'}).text != 'Finished':
+            match_status = soup.find('div', {'class': 'info-status mstat'}).text
+        else:
+            match_status = None
         
+        if soup.find('div', {'class': 'info-bubble'}) is not None:
+            match_note = soup.find('div', {'class': 'info-bubble'}).find('span', {'class': 'text'}).text
+        else:
+            match_note = None
+                
         m_t = soup.find('div', {'class': 'info-time mstat-date'}).text
          
         summ = soup.find('div', {'id':'summary-content'})
@@ -231,7 +241,7 @@ for lin in player_links[0:2]:
             odd_home = soup.find('td', {'class': re.compile('^kx o_1')}).find('span', {'class': 'odds-wrap'}).text
             odd_away = soup.find('td', {'class': re.compile('^kx o_2')}).find('span', {'class': 'odds-wrap'}).text
        
-        matches.loc[len(matches)] =  [m_l, tour, tour_link, m_t, pl_home, pl_away, odd_home, odd_away]
+        matches.loc[len(matches)] =  [m_l, tour, tour_link, m_t, match_status, match_note, pl_home, pl_away, odd_home, odd_away]
         
         
         matches.loc[len(matches) - 1].to_frame().T.to_csv(f_matches, sep = ';', mode='a', header=(not os.path.exists(f_matches)))
