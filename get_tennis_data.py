@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 
 import re
-import datetime, time
+import datetime, time, os
 
 import pandas as pd
 
@@ -21,10 +21,7 @@ players = pd.DataFrame(columns=['id_player', 'name_player', 'dob', 'sex'])
 ranks = pd.DataFrame(columns=['id_player', 'year', 'rank'])
 match_stats = pd.DataFrame(columns=['id_match', 'set_num', 'game_home', 'game_away', 'set_duration'])
 
-matches = pd.DataFrame(columns=['id_match', 'tournament', 'date', 'id_player_home', 'id_player_away', 'odd_home', 'odd_away'])
-
-
-
+matches = pd.DataFrame(columns=['id_match', 'tournament', 'tournament_link', 'date', 'id_player_home', 'id_player_away', 'odd_home', 'odd_away'])
 
 url = "https://www.flashscore.com/tennis/rankings/atp/"
 
@@ -48,6 +45,19 @@ caps = DesiredCapabilities().FIREFOX
 #caps["pageLoadStrategy"] = "normal"  #  complete
 caps["pageLoadStrategy"] = "eager"  #  interactive не ждать загрузки всякой рекламы
 #caps["pageLoadStrategy"] = "none"
+
+f_matches = 'matches.csv'
+f_match_stats = 'match_stats.csv'
+
+if os.path.exists(f_matches):
+    matches = pd.read_csv(f_matches, index_col=0, sep = ';')
+    print(matches)
+      
+
+if os.path.exists(f_match_stats):
+    match_stats = pd.read_csv(f_match_stats, index_col=0, sep = ';')
+    
+
 
 driver = webdriver.Firefox(firefox_options = options, firefox_profile=profile, capabilities = caps)
 driver.implicitly_wait(40)
@@ -122,10 +132,14 @@ players.to_csv('players.csv', sep = ';')
 ranks.to_csv('ranks.csv', sep = ';')
 '''     
 
-for lin in player_links[0:10]:
+for lin in player_links[0:2]:
     i += 1
     print('Current player: ', i, ' ', lin)
     
+    driver.close()
+    driver = webdriver.Firefox(firefox_options = options, firefox_profile=profile, capabilities = caps)
+    driver.implicitly_wait(40)
+        
     while True:
         try:
             driver.get('https://www.flashscore.com' + lin + '/results/')
@@ -135,23 +149,26 @@ for lin in player_links[0:10]:
         
     #нажимаем кномку load more для дозагрузки матчей
     
-    WebDriverWait(driver, 10).until(EC.invisibility_of_element_located((By.ID, "preload")))
+    WebDriverWait(driver, 40).until(EC.invisibility_of_element_located((By.ID, "preload")))
    
     for cnt in range(0, 4):
         driver.execute_script("loadMoreGames('_s');")
-        WebDriverWait(driver, 10).until(EC.invisibility_of_element_located((By.ID, "preload")))
+        WebDriverWait(driver, 40).until(EC.invisibility_of_element_located((By.ID, "preload")))
         
     
    
     soup = BeautifulSoup(driver.page_source, "html.parser")
       
     table = soup.find('div', {'id': 'fs-results_s'}).find_all('tr', {'id': re.compile('^g_2')})
-      
-    print(len(table))
     
-    for tab in table:
+    table = [tab.get('id')[4:] for tab in table]
+    
+    print(len(table))
+    print(len(list(set(table) - set(matches['id_match'].tolist()))))
         
-        m_l = tab.get('id')[4:]
+    for tab in list(set(table) - set(matches['id_match'].tolist())):
+        
+        m_l = tab
         
         while True:
             try:
@@ -160,7 +177,7 @@ for lin in player_links[0:10]:
                 continue
             break
         
-        WebDriverWait(driver, 10).until(EC.visibility_of_element_located((By.ID, "tab-match-summary")))
+        WebDriverWait(driver, 40).until(EC.visibility_of_element_located((By.ID, "tab-match-summary")))
         
         soup = BeautifulSoup(driver.page_source, "html.parser")   
         
@@ -197,38 +214,48 @@ for lin in player_links[0:10]:
                 if len(tm.text) > 0:
                     dur.append(int(tm.text[0: 1]) * 60 + int(tm.text[2: 4]))
         
-        
-        for s in range(0, len(game_home)):
-            if len(dur) > 0:
-                match_stats.loc[len(match_stats)] =  [m_l, s, game_home[s], game_away[s], dur[s + 1]]
-            else:
-                match_stats.loc[len(match_stats)] =  [m_l, s, game_home[s], game_away[s], None]
-            
-        game_home = []
-        game_away = []
-        dur = []
-        
         tour = soup.find('th', {'class': 'header'}).find('a').text
-           
+        tour_link = soup.find('th', {'class': 'header'}).find('a').get('onclick')
+        tour_link = tour_link[tour_link.find('/'): tour_link.find(')') - 1]
+               
         pl_home = soup.find('div', {'class': 'team-text tname-home'}).find('a').get('onclick')
         pl_home = pl_home[pl_home.find('/'): pl_home.find(')') - 1]
             
         pl_away = soup.find('div', {'class': 'team-text tname-away'}).find('a').get('onclick')
         pl_away = pl_away[pl_away.find('/'): pl_away.find(')') - 1]
         
-               
+        odd_home = 0
+        odd_away = 0
+        
         if soup.find('span', {'class': 'odds value'}) is not None:
             odd_home = soup.find('td', {'class': re.compile('^kx o_1')}).find('span', {'class': 'odds-wrap'}).text
             odd_away = soup.find('td', {'class': re.compile('^kx o_2')}).find('span', {'class': 'odds-wrap'}).text
+       
+        matches.loc[len(matches)] =  [m_l, tour, tour_link, m_t, pl_home, pl_away, odd_home, odd_away]
+        
+        
+        matches.loc[len(matches) - 1].to_frame().T.to_csv(f_matches, sep = ';', mode='a', header=(not os.path.exists(f_matches)))
+        
+        for s in range(0, len(game_home)):
+            if len(dur) > 0:
+                match_stats.loc[len(match_stats)] =  [m_l, s, game_home[s], game_away[s], dur[s + 1]]
+                match_stats.iloc[len(match_stats) - 1].to_frame().T.to_csv(f_match_stats, sep = ';', mode='a', header=(not os.path.exists(f_match_stats)))
+                
+            else:
+                match_stats.loc[len(match_stats)] =  [m_l, s, game_home[s], game_away[s], None]
+                match_stats.iloc[len(match_stats) - 1].to_frame().T.to_csv(f_match_stats, sep = ';', mode='a', header=(not os.path.exists(f_match_stats)))
+                
             
-        matches.loc[len(matches)] =  [m_l, tour, m_t, pl_home, pl_away, odd_home, odd_away]
+        game_home = []
+        game_away = []
+        dur = []
         
         m += 1
         print('Total matches: ', m ,' ' , m_l)
        
 
-match_stats.to_csv('match_stats.csv', sep = ';')
-matches.to_csv('matches.csv', sep = ';')
+#match_stats.to_csv('match_stats.csv', sep = ';')
+#matches.to_csv('matches.csv', sep = ';')
 
 driver.close()
 
