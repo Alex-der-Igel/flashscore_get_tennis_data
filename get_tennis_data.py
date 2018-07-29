@@ -129,7 +129,7 @@ players.to_csv('players.csv', sep = ';')
 ranks.to_csv('ranks.csv', sep = ';')
 '''     
 
-for lin in player_links[0:2]:
+for lin in player_links[389: 450]:
     i += 1
     print('Current player: ', i, ' ', lin)
     
@@ -158,7 +158,7 @@ for lin in player_links[0:2]:
       
     table = soup.find('div', {'id': 'fs-results_s'}).find_all('tr', {'id': re.compile('^g_2')})
     
-    table = [tab.get('id')[4:] for tab in table]
+    table = [tab.get('id')[4:] for tab in table[0: 20]]
     
     print(len(table))
     print(len(list(set(table) - set(matches['id_match'].tolist()))))
@@ -247,13 +247,13 @@ for lin in player_links[0:2]:
         matches.loc[len(matches) - 1].to_frame().T.to_csv(f_matches, sep = ';', mode='a', header=(not os.path.exists(f_matches)))
         
         for s in range(0, len(game_home)):
-            if len(dur) > 0:
+            if len(dur) == len(game_home) + 1:
                 match_stats.loc[len(match_stats)] =  [m_l, s, game_home[s], game_away[s], dur[s + 1]]
-                match_stats.iloc[len(match_stats) - 1].to_frame().T.to_csv(f_match_stats, sep = ';', mode='a', header=(not os.path.exists(f_match_stats)))
+                match_stats.loc[len(match_stats) - 1].to_frame().T.to_csv(f_match_stats, sep = ';', mode='a', header=(not os.path.exists(f_match_stats)))
                 
             else:
                 match_stats.loc[len(match_stats)] =  [m_l, s, game_home[s], game_away[s], None]
-                match_stats.iloc[len(match_stats) - 1].to_frame().T.to_csv(f_match_stats, sep = ';', mode='a', header=(not os.path.exists(f_match_stats)))
+                match_stats.loc[len(match_stats) - 1].to_frame().T.to_csv(f_match_stats, sep = ';', mode='a', header=(not os.path.exists(f_match_stats)))
                 
             
         game_home = []
