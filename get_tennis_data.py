@@ -129,7 +129,7 @@ players.to_csv('players.csv', sep = ';')
 ranks.to_csv('ranks.csv', sep = ';')
 '''     
 
-for lin in player_links[389: 450]:
+for lin in player_links[16: 20]:
     i += 1
     print('Current player: ', i, ' ', lin)
     
@@ -158,7 +158,7 @@ for lin in player_links[389: 450]:
       
     table = soup.find('div', {'id': 'fs-results_s'}).find_all('tr', {'id': re.compile('^g_2')})
     
-    table = [tab.get('id')[4:] for tab in table[0: 20]]
+    table = [tab.get('id')[4:] for tab in table[0: 200]]
     
     print(len(table))
     print(len(list(set(table) - set(matches['id_match'].tolist()))))
@@ -182,7 +182,7 @@ for lin in player_links[389: 450]:
         
         soup = BeautifulSoup(driver.page_source, "html.parser")   
         
-        if soup.find('div', {'class': 'info-status mstat'}).text == 'Walkover':
+        if soup.find('div', {'class': 'info-status mstat'}).text in ['Walkover' ,'Abandoned']:
             continue
         elif soup.find('div', {'class': 'info-status mstat'}).text != 'Finished':
             match_status = soup.find('div', {'class': 'info-status mstat'}).text
