@@ -129,7 +129,7 @@ players.to_csv('players.csv', sep = ';')
 ranks.to_csv('ranks.csv', sep = ';')
 '''     
 
-for lin in player_links[16: 20]:
+for lin in player_links[19: 30]:
     i += 1
     print('Current player: ', i, ' ', lin)
     
@@ -140,13 +140,17 @@ for lin in player_links[16: 20]:
     while True:
         try:
             driver.get('https://www.flashscore.com' + lin + '/results/')
+            WebDriverWait(driver, 40).until(EC.invisibility_of_element_located((By.ID, "preload")))
         except:
+            driver.close()
+            driver = webdriver.Firefox(firefox_options = options, firefox_profile=profile, capabilities = caps)
+            driver.implicitly_wait(40)
             continue
         break
         
     #нажимаем кномку load more для дозагрузки матчей
     
-    WebDriverWait(driver, 40).until(EC.invisibility_of_element_located((By.ID, "preload")))
+    
    
     for cnt in range(0, 4):
         driver.execute_script("loadMoreGames('_s');")
@@ -174,11 +178,15 @@ for lin in player_links[16: 20]:
         while True:
             try:
                 driver.get('https://www.flashscore.com/match/' + m_l + '/#match-summary/')
+                WebDriverWait(driver, 40).until(EC.visibility_of_element_located((By.ID, "tab-match-summary")))
             except:
+                driver.close()
+                driver = webdriver.Firefox(firefox_options = options, firefox_profile=profile, capabilities = caps)
+                driver.implicitly_wait(40)
                 continue
             break
         
-        WebDriverWait(driver, 40).until(EC.visibility_of_element_located((By.ID, "tab-match-summary")))
+        
         
         soup = BeautifulSoup(driver.page_source, "html.parser")   
         
