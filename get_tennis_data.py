@@ -129,7 +129,7 @@ players.to_csv('players.csv', sep = ';')
 ranks.to_csv('ranks.csv', sep = ';')
 '''     
 
-for lin in player_links[19: 30]:
+for lin in player_links[110: 112]:
     i += 1
     print('Current player: ', i, ' ', lin)
     
@@ -149,7 +149,6 @@ for lin in player_links[19: 30]:
         break
         
     #нажимаем кномку load more для дозагрузки матчей
-    
     
    
     for cnt in range(0, 4):
@@ -229,7 +228,7 @@ for lin in player_links[19: 30]:
         
         if soup.find('tfoot', {'class':'match-time'}) is not None:
             for tm in soup.find('tfoot', {'class':'match-time'}).find_all('td', {'class': 'score'}):
-                if len(tm.text) > 0:
+                if len(tm.text) > 0 and len(tm.text) < 5:
                     dur.append(int(tm.text[0: 1]) * 60 + int(tm.text[2: 4]))
         
         tour = soup.find('th', {'class': 'header'}).find('a').text
