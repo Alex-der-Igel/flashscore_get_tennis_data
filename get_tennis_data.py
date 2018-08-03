@@ -129,7 +129,7 @@ players.to_csv('players.csv', sep = ';')
 ranks.to_csv('ranks.csv', sep = ';')
 '''     
 
-for lin in player_links[110: 112]:
+for lin in player_links[163: 170]:
     i += 1
     print('Current player: ', i, ' ', lin)
     
@@ -185,11 +185,11 @@ for lin in player_links[110: 112]:
                 continue
             break
         
-        
+        #print(m_l)
         
         soup = BeautifulSoup(driver.page_source, "html.parser")   
         
-        if soup.find('div', {'class': 'info-status mstat'}).text in ['Walkover' ,'Abandoned']:
+        if soup.find('div', {'class': 'info-status mstat'}).text in ['Walkover' ,'Abandoned'] or soup.find('div', {'class': 'nodata-block'}) is not None:
             continue
         elif soup.find('div', {'class': 'info-status mstat'}).text != 'Finished':
             match_status = soup.find('div', {'class': 'info-status mstat'}).text
@@ -204,12 +204,15 @@ for lin in player_links[110: 112]:
         m_t = soup.find('div', {'class': 'info-time mstat-date'}).text
          
         summ = soup.find('div', {'id':'summary-content'})
+        
+        
         sum_home = summ.find('tr', {'class': 'odd'})
         
         for scor in sum_home.find_all('td', {'class': re.compile('^score')}):
             if scor.get('class') == ['score']:
-                if scor.find('strong') is not None:
-                    set_home = int(scor.find('strong').text)
+                if scor.find('strong') is not None: 
+                    if scor.find('strong').text != '':
+                        set_home = int(scor.find('strong').text)
                     
             elif scor.find('span') is not None:
                 game_home.append(int(scor.find('span').text))
@@ -220,7 +223,8 @@ for lin in player_links[110: 112]:
         for scor in sum_away.find_all('td', {'class': re.compile('^score')}):
             if scor.get('class') == ['score']:
                 if scor.find('strong') is not None:
-                    set_away = int(scor.find('strong').text)
+                    if scor.find('strong').text != '':
+                        set_away = int(scor.find('strong').text)
                     
             elif scor.find('span') is not None:
                 game_away.append(int(scor.find('span').text))
