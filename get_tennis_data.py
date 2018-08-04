@@ -129,10 +129,10 @@ players.to_csv('players.csv', sep = ';')
 ranks.to_csv('ranks.csv', sep = ';')
 '''     
 
-for lin in player_links[163: 170]:
+for lin in player_links[264: 301]:
     i += 1
     print('Current player: ', i, ' ', lin)
-    
+        
     driver.close()
     driver = webdriver.Firefox(firefox_options = options, firefox_profile=profile, capabilities = caps)
     driver.implicitly_wait(40)
@@ -173,21 +173,31 @@ for lin in player_links[163: 170]:
             run_time = time.time()
         
         m_l = tab
+        print(m_l) 
         
+        try_load = 0
         while True:
             try:
+                try_load += 1
                 driver.get('https://www.flashscore.com/match/' + m_l + '/#match-summary/')
                 WebDriverWait(driver, 40).until(EC.visibility_of_element_located((By.ID, "tab-match-summary")))
             except:
+                
+                soup = BeautifulSoup(driver.page_source, "html.parser")
+                print(try_load)
+                if soup.find('div', {'id': 'tab-match-summary'}) is None and try_load > 2:
+                    break
+                
                 driver.close()
                 driver = webdriver.Firefox(firefox_options = options, firefox_profile=profile, capabilities = caps)
                 driver.implicitly_wait(40)
                 continue
             break
         
-        #print(m_l)
-        
+               
         soup = BeautifulSoup(driver.page_source, "html.parser")   
+        if soup.find('div', {'id': 'tab-match-summary'}) is None:
+            continue
         
         if soup.find('div', {'class': 'info-status mstat'}).text in ['Walkover' ,'Abandoned'] or soup.find('div', {'class': 'nodata-block'}) is not None:
             continue
