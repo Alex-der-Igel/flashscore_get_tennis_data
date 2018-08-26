@@ -1,6 +1,4 @@
 from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
@@ -26,29 +24,19 @@ matches = pd.DataFrame(columns=['id_match', 'tournament', 'tournament_link', 'da
 
 url = "https://www.flashscore.com/tennis/rankings/atp/"
 
-options = Options()
+options = webdriver.ChromeOptions()
 options.add_argument("--headless")
 options.add_argument('--ignore-ssl-errors')
+options.add_argument('disable-dev-shm-usage')
+options.add_argument('no-sandbox')
+
+
 
 blank_dob = datetime.date(2000, 1, 1)
 blank_dob = int(time.mktime(blank_dob.timetuple()))
 
-# create a new Firefox session
-profile = webdriver.FirefoxProfile()
-profile.set_preference('permissions.default.image', 2)
-profile.set_preference("browser.cache.disk.enable", False)
-profile.set_preference("browser.cache.memory.enable", False)
-profile.set_preference("browser.cache.offline.enable", False)
-profile.set_preference("network.http.use-cache", False) 
-
-
-caps = DesiredCapabilities().FIREFOX
-#caps["pageLoadStrategy"] = "normal"  #  complete
-caps["pageLoadStrategy"] = "eager"  #  interactive не ждать загрузки всякой рекламы
-#caps["pageLoadStrategy"] = "none"
-
-f_matches = 'matches.csv'
-f_match_stats = 'match_stats.csv'
+f_matches = 'matches_atp.csv'
+f_match_stats = 'match_stats_atp.csv'
 
 if os.path.exists(f_matches):
     matches = pd.read_csv(f_matches, index_col=0, sep = ';')
@@ -56,7 +44,7 @@ if os.path.exists(f_matches):
 if os.path.exists(f_match_stats):
     match_stats = pd.read_csv(f_match_stats, index_col=0, sep = ';')
     
-driver = webdriver.Firefox(firefox_options = options, firefox_profile=profile, capabilities = caps)
+driver = webdriver.Chrome(chrome_options = options)
 driver.implicitly_wait(40)
 driver.get(url)
 
@@ -76,7 +64,7 @@ for inf in info_players:
 i = 0
 m = 0
 '''
-for lin in player_links[605: 615]:
+for lin in player_links[0: 600]:
     print(i)
     
     while True:
@@ -110,7 +98,7 @@ for lin in player_links[605: 615]:
         dob = blank_dob
         
     #добавляем в конец dataframe полученную запись
-    players.loc[len(players)] =  [lin, name, dob, 1]
+    players.loc[len(players)] =  [lin, name, dob, 0]
     
     entrs = table.find('tbody')
     entrs = entrs.find_all('tr')
@@ -129,12 +117,12 @@ players.to_csv('players.csv', sep = ';')
 ranks.to_csv('ranks.csv', sep = ';')
 '''     
 
-for lin in player_links[264: 301]:
+for lin in player_links[400: 800]:
     i += 1
     print('Current player: ', i, ' ', lin)
         
     driver.close()
-    driver = webdriver.Firefox(firefox_options = options, firefox_profile=profile, capabilities = caps)
+    driver = webdriver.Chrome(chrome_options = options)
     driver.implicitly_wait(40)
         
     while True:
@@ -143,7 +131,7 @@ for lin in player_links[264: 301]:
             WebDriverWait(driver, 40).until(EC.invisibility_of_element_located((By.ID, "preload")))
         except:
             driver.close()
-            driver = webdriver.Firefox(firefox_options = options, firefox_profile=profile, capabilities = caps)
+            driver = webdriver.Chrome(chrome_options = options)
             driver.implicitly_wait(40)
             continue
         break
@@ -173,7 +161,7 @@ for lin in player_links[264: 301]:
             run_time = time.time()
         
         m_l = tab
-        print(m_l) 
+        #print(m_l) 
         
         try_load = 0
         while True:
@@ -184,12 +172,12 @@ for lin in player_links[264: 301]:
             except:
                 
                 soup = BeautifulSoup(driver.page_source, "html.parser")
-                print(try_load)
+                #print(try_load)
                 if soup.find('div', {'id': 'tab-match-summary'}) is None and try_load > 2:
                     break
                 
                 driver.close()
-                driver = webdriver.Firefox(firefox_options = options, firefox_profile=profile, capabilities = caps)
+                driver = webdriver.Chrome(chrome_options = options)
                 driver.implicitly_wait(40)
                 continue
             break
@@ -285,8 +273,8 @@ for lin in player_links[264: 301]:
         print('Total matches: ', m ,' ' , m_l)
        
 
-#match_stats.to_csv('match_stats.csv', sep = ';')
-#matches.to_csv('matches.csv', sep = ';')
+match_stats.to_csv('match_stats.csv', sep = ';')
+matches.to_csv('matches.csv', sep = ';')
 
 driver.close()
 
